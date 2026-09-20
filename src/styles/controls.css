@@ -1,0 +1,218 @@
+/**
+ * 进度条 / 滑条 / 队列行等控件级样式。
+ * 原版把这些散在 index.css 的 5000-7200 行区间，这里按复刻到的控件收敛成一份。
+ */
+
+/* ---- 进度条：原版 #progress-bar / #progress-fill / #progress-thumb ---- */
+.progress-rail {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .12);
+  cursor: pointer;
+  transition: height var(--dur-btn) var(--ease-mr);
+}
+
+.progress-rail:hover { height: 6px; }
+
+.progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .68), var(--home-accent));
+  box-shadow: 0 0 12px rgba(var(--home-accent-rgb), .38);
+}
+
+.progress-thumb {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, .28), 0 0 14px rgba(var(--home-accent-rgb), .5);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform var(--dur-btn) var(--ease-mr);
+}
+
+.progress-rail:hover .progress-thumb,
+.progress-rail[data-dragging='true'] .progress-thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* ---- 通用滑条（音量 / 淡入淡出 / 视觉参数） ---- */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+  outline: none;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, .3), 0 0 10px rgba(var(--home-accent-rgb), .45);
+  cursor: grab;
+  transition: transform var(--dur-btn) var(--ease-mr);
+}
+
+.range::-webkit-slider-thumb:hover { transform: scale(1.18); }
+.range::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.05); }
+
+.range::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, .3), 0 0 10px rgba(var(--home-accent-rgb), .45);
+  cursor: grab;
+}
+
+.range--mini { height: 2px; }
+.range--fx { height: 2px; background: rgba(255, 255, 255, .1); }
+
+/* ---- 竖直音量条（原版 #volume-slider 在 hover 时展开） ---- */
+.volume-pop {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-radius: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-btn) var(--ease-mr), transform var(--dur-btn) var(--ease-mr);
+}
+
+.volume-wrap:hover .volume-pop,
+.volume-wrap[data-open='true'] .volume-pop {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.volume-track {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 3px;
+  height: 92px;
+}
+
+/* ---- 下拉列表：原版 .quality-option-list ---- */
+.pop-list {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: 14px;
+  z-index: 20;
+  animation: fade-rise 180ms var(--ease-mr) both;
+}
+
+.pop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--fc-ink-2);
+  font-size: 12px;
+  text-align: left;
+  transition: background var(--dur-btn) var(--ease-mr), color var(--dur-btn) var(--ease-mr);
+}
+
+.pop-item:hover { background: rgba(255, 255, 255, .08); color: var(--fc-ink); }
+
+.pop-item[data-active='true'] {
+  color: var(--home-accent);
+  background: rgba(var(--home-accent-rgb), .1);
+}
+
+/* ---- 曲目行 ---- */
+.track-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--fc-ink-2);
+  text-align: left;
+  transition: background var(--dur-btn) var(--ease-mr), border-color var(--dur-btn) var(--ease-mr);
+}
+
+.track-row:hover {
+  background: rgba(255, 255, 255, .055);
+  border-color: var(--glass-border-soft);
+}
+
+.track-row[data-current='true'] {
+  background: linear-gradient(100deg, rgba(var(--home-accent-rgb), .14), rgba(255, 255, 255, .03));
+  border-color: var(--glass-border);
+  color: #fff;
+}
+
+.track-row__index {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fc-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.track-row[data-current='true'] .track-row__index { color: var(--home-accent); }
+
+/* ---- 封面 ---- */
+.cover {
+  border-radius: 9px;
+  background: linear-gradient(140deg, #1b1f26, #0a0c10);
+  object-fit: cover;
+  flex: none;
+}
+
+.cover--round { border-radius: 50%; }
+
+.cover-spin { animation: spin-slow 18s linear infinite; }
+
+/* ---- 骨架屏 ---- */
+.skeleton {
+  border-radius: 9px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .1), rgba(255, 255, 255, .04));
+  background-size: 240% 100%;
+  animation: skeleton-slide 1.3s var(--ease-mr) infinite;
+}
+
+@keyframes skeleton-slide {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+
+/* ---- 舞台上的字层：原版 .splash-word 拆分 ---- */
+.stage-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 42%, transparent 34%, rgba(3, 4, 6, .55) 78%, rgba(3, 4, 6, .9) 100%),
+    linear-gradient(180deg, rgba(8, 9, 11, .62), transparent 26%, transparent 62%, rgba(8, 9, 11, .8));
+}

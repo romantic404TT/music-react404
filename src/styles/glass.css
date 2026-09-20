@@ -1,0 +1,63 @@
+/**
+ * 玻璃拟态配方，移植自 public/css/index.css 的 .glass-saved-panel / .modal / 面板玻璃规则。
+ * html.control-glass-svg-ok 由 GlassFilterDefs 在置换贴图就绪后加上，与原版的降级路径一致：
+ * 贴图上不了时退回纯 backdrop-filter，不会出现空白玻璃。
+ */
+
+.glass-saved-panel {
+  background: var(--saved-panel-glass-bg);
+  border: 0;
+  border-radius: var(--saved-panel-glass-radius);
+  backdrop-filter: var(--saved-panel-glass-filter);
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter);
+  box-shadow: var(--saved-panel-glass-shadow);
+}
+
+html.control-glass-svg-ok .glass-saved-panel {
+  backdrop-filter: var(--saved-panel-glass-svg-filter);
+  -webkit-backdrop-filter: var(--saved-panel-glass-svg-filter);
+}
+
+.glass-saved-button {
+  background: var(--saved-button-glass-bg);
+  border: 0;
+  backdrop-filter: var(--saved-button-glass-filter);
+  -webkit-backdrop-filter: var(--saved-button-glass-filter);
+  box-shadow: var(--saved-button-glass-shadow);
+}
+
+html.control-glass-svg-ok .glass-saved-button {
+  backdrop-filter: var(--saved-button-glass-svg-filter);
+  -webkit-backdrop-filter: var(--saved-button-glass-svg-filter);
+}
+
+.glass-panel {
+  background: var(--panel-glass-bg);
+  backdrop-filter: var(--panel-glass-filter);
+  -webkit-backdrop-filter: var(--panel-glass-filter);
+  box-shadow: var(--panel-glass-shadow);
+  border-radius: 22px;
+  border: 1px solid var(--glass-border-soft);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: var(--glass-shadow);
+  border: 1px solid var(--glass-border-soft);
+}
+
+.glass-card-focus {
+  background: var(--glass-bg-focus);
+  box-shadow: var(--glass-shadow-focus);
+  border-color: var(--glass-border);
+}
+
+.control-glass-filter-svg {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+}

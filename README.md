@@ -1,0 +1,194 @@
+# Mineradio · React 复刻工程
+
+对 [XxHuberrr/Mineradio](https://github.com/XxHuberrr/Mineradio) v2.2.0（commit `328a087`，GPL-3.0）的
+**前端重构**：Vite + React 18 + TypeScript + React Router + Tailwind + Zustand，
+后端 107 个接口中与主流程相关的约 40 个用 MSW 按真实响应结构 mock 掉。
+
+> 这是一份复刻练习，不是 Mineradio 官方代码，也不提供任何真实音乐源。
+> 曲名、艺人名、歌词、账号信息全部是本工程内合成的虚构数据。
+
+---
+
+## 快速开始
+
+```bash
+npm install
+npm run dev
+```
+
+打开 http://127.0.0.1:5173/ ，先进入启动页，点击任意位置或按 Enter 进入首页。
+
+```bash
+npm run build      # 类型检查 + 生产构建，产物在 dist/
+npm run preview    # 本地预览构建产物（等价于部署后的效果）
+npm run typecheck  # 只跑 tsc --noEmit
+```
+
+### 部署
+
+构建产物是纯静态文件，任何静态托管都能放：
+
+```bash
+npm run build
+# 把 dist/ 整个目录交给 nginx / GitHub Pages / Cloudflare Pages / 对象存储
+```
+
+路由用的是 **HashRouter**（`/#/home`），所以静态托管**不需要**任何 rewrite 规则；
+子目录部署时记得同时配 Vite 的 `base`，MSW 的 worker 路径走的是 `import.meta.env.BASE_URL`，会自动跟随。
+
+### 关掉 mock 接真后端
+
+业务代码里的请求路径与真实后端完全一致（都是 `/api/...`），所以：
+
+```bash
+VITE_ENABLE_MSW=0 VITE_API_BASE=http://127.0.0.1:3000 npm run dev
+```
+
+MSW 用动态 `import` 挂载，关掉后不会进包。注意真后端是 Electron 里的
+`node:http` 服务（默认 `:3000`），需要能访问网易云/QQ/酷狗/汽水的网络，
+且本工程不含 Electron 主进程，桌面能力（壁纸、桌面歌词独立窗口、托盘）不存在。
+
+---
+
+## 技术栈
+
+| 用途 | 选择 | 版本 |
+|---|---|---|
+| 构建 | Vite | ^5.4.19 |
+| UI | React + react-dom | ^18.3.1 |
+| 语言 | TypeScript | ^5.7.3（strict + noUnusedLocals） |
+| 路由 | react-router-dom | ^6.30.1（HashRouter） |
+| 样式 | Tailwind CSS | ^3.4.18 |
+| 状态 | Zustand | ^5.0.15 |
+| 视觉 | three | ^0.186.0 |
+| 动画 | gsap | ^3.15.0（已装，当前界面用 CSS 过渡实现） |
+| Mock | msw | ^2.7.6 |
+
+---
+
+## 目录结构
+
+```
+src/
+├─ main.tsx                 入口：条件启动 MSW → 挂载 App
+├─ App.tsx                  ErrorBoundary + HashRouter
+├─ router/AppRoutes.tsx     路由表（全部 lazy）
+├─ types/                   track / api / fx，字段名对齐原版
+├─ lib/
+│  ├─ http.ts               fetch 封装，带 ApiError
+│  ├─ storage.ts            原版 localStorage key 清单
+│  ├─ format.ts             时长 / 播放量 / 聆听时长 / 日期
+│  ├─ lrc.ts                LRC 解析、译文对齐、时间校准
+│  ├─ audioLevels.ts        每帧电平的可变单例（不走 React 状态）
+│  └─ glassMap.ts           色差玻璃置换贴图生成器
+├─ services/                search / song / playlist / discover / content / account
+├─ store/                   player / settings / account / library / fx / stats / ui
+├─ hooks/                   useAudioEngine / useLyrics / useHotkeys
+├─ mocks/
+│  ├─ browser.ts            setupWorker
+│  ├─ session.ts            有状态的登录会话（登录会改变后续返回）
+│  ├─ data/catalog.ts       合成曲库、歌单、播客、封面生成
+│  ├─ data/lyrics.ts        合成歌词
+│  ├─ audio/synth.ts        合成 WAV 底床
+│  └─ handlers/             util / account / search / playback / library / content
+├─ styles/                  tokens / glass / components / controls / globals
+└─ components/
+   ├─ shell/ShellLayout.tsx  常驻层 + 标题栏 + 背景层
+   ├─ stage/                 VisualStage（three.js 粒子）/ LyricsOverlay
+   ├─ player/BottomBar.tsx   控制条（含进度、音质、音量、迷你队列、歌词校准）
+   ├─ playlist/              三页签面板
+   ├─ fx/                    视觉控制台 + FAB
+   ├─ modals/ModalHost.tsx   7 个对话框
+   └─ ui/                    Icons / primitives / GlassFilterDefs
+```
+
+---
+
+## 复刻了什么
+
+### 界面与交互
+- **启动页**：字标分字母入场、点击进入/Enter/Space 进入
+- **首页**：Hero 卡（日期、时钟、换一条）、4 张快捷卡（继续播放 / 音乐库 / 每日推荐 / 最近播放，`data-home-tone` 同名）、洞察栏（今日聆听 / 接下来播放 / 为你挑选 / 平台推荐）
+- **搜索**：`All | NE | QQ | KG | QS | Podcast` 六模式、防抖 + `AbortController` 取消在途请求、分页加载更多、搜索历史持久化
+- **控制条**：封面 / 标题角标（试听、换源）/ 音质菜单 / 艺人 / 红心 / 收藏 / 播放模式 / AutoMix 入口 / 前后曲 / 播放暂停 / 迷你队列 / 歌词开关（长按或右键做 ±0.1s 校准）/ 音量（含淡入淡出滑条）/ 自动隐藏 / 全沉浸式 / 全屏 / 进度条拖拽 seek
+- **歌单面板**：队列 / 歌单 / 播客三页签，钉住，分页水合 + 预热下一页
+- **视觉控制台**：预设 / 外观 / 歌词 / 动态 / 高级 五分区，13 个预设卡，约 45 个参数滑条，13 槽用户存档，导出/导入
+- **对话框**：登录（扫码 + Cookie，4 平台）、账号、收藏到歌单、歌曲详情与评论、自定义歌词、封面裁剪、更新
+- **设置页**：分平台音质、淡入淡出、界面显隐、启动恢复、音量、快捷键说明、关于
+- **色差玻璃**：原版 SVG `feDisplacementMap` 滤镜链 + 按元素尺寸实时生成的置换贴图，贴图不可用时自动降级为纯 `backdrop-filter`
+
+### 数据契约
+`/api/search`、`/api/{qq,kugou,qishui}/search`、`/api/kugou/recommendations`、`/api/qishui/feed`、
+`/api/song/url` 及三个平台变体、`/api/audio`、`/api/cover`、`/api/lyric` 及变体、
+`/api/user/playlists` 及变体、`/api/playlist/tracks` 及变体、`/api/playlist/{create,add-song,subscribe}`、
+`/api/discover/home`、`/api/weather/{radio,ip-location}`、`/api/login/{status,cookie,logout,qr/*}`、
+`/api/{qq,kugou}/login/*`、`/api/qishui/login/{qrcode,check}`、`/api/qishui/status`、
+`/api/song/like{,/check}`、`/api/song/comments`、`/api/podcast/{hot,search,detail,programs,my}`、
+`/api/podcast/dj-beatmap`、`/api/listen/{report,total}`、`/api/platform/capabilities`、
+`/api/app/version`、`/api/update/latest`。
+
+两个**刻意照抄**的行为，不是遗漏：`/api/spotify/*` 返回 `404 PROVIDER_REMOVED`，
+`/api/update/{download,patch}*` 返回 `410 UPDATE_EXTERNAL_ONLY` —— 真实后端就是这么做的。
+
+### 视觉舞台
+three.js 点云 + 自定义 GLSL，从当前封面像素采样颜色与位置（原版也是运行时生成贴图，不依赖图片资源），
+WebAudio `AnalyserNode` 实时驱动 bass / mid / treble / beatPulse。实现 3 个代表预设
+（`emily专辑封面`、`滚筒`、`星球`），其余 10 个在控制台可见但会明确提示未复刻。
+
+---
+
+## 自测结果
+
+在 `node v24.16 / npm 11.13` + 无头 Edge 下实测（1440×900，dev server `:5173`）：
+
+| 项 | 结果 |
+|---|---|
+| `npx tsc --noEmit` | 0 error（strict + noUnusedLocals + noUnusedParameters） |
+| `npm run build` | 通过，327 modules，5.6s，主包 805KB / gzip 227KB |
+| 运行时 `pageerror` / `console.error` | 0 |
+| HTTP ≥ 400 响应 | 0（favicon 已内联为 data URI） |
+| MSW 拦截 | 单次首页冷启动发出 27 个 `/api/*` 请求，全部由 mock 接住 |
+| 启动页 → 首页 | 点击后路由 `/splash → /home`，4 张快捷卡 tone 为 `search/library/mix/playlist` |
+| 搜索 | 输入「夜」返回 20 行；防抖 420ms + AbortController 生效 |
+| 播放 | 点曲目 → 解析音源 → 出声，进度 2.5s→2.0% / +5s→7.0%（1:40 曲目，实时推进） |
+| 暂停/恢复 | 暂停后进度停在 7.27%，恢复后继续到 10.24% |
+| 拖拽 seek | 点进度条 50% 处 → 50.47% |
+| 下一首 | 进度归零、标题切换、封面粒子重新采样 |
+| 播放模式 | 循环三次回到「顺序循环」 |
+| 迷你队列 | 展开 12 条 |
+| 视觉控制台 | 外观页签 12 个滑条 + 2 个取色器；切「星球」后 `preset=2` 已落 localStorage |
+| 未复刻提示 | 点「安魂」弹出「『安魂』预设的 GLSL 未在本次复刻范围内」 |
+| 扫码登录 | 弹窗出二维码，等待态 → 约 6 秒后自动确认并关闭（mock 状态机 801→802→803） |
+| WebGL | `#canvas-container canvas` 1440×900，软件渲染（swiftshader）下正常出点云 |
+
+规模：**64 个源文件，约 12,000 行**（TS/TSX/CSS）。
+
+---
+
+## 已知差异（不要按原版预期）
+
+1. **音频是合成的。** mock 没有真实音源，`/api/audio` 回一段按曲目 id 派生 BPM 的 12 秒 WAV 底床
+   （`src/mocks/audio/synth.ts`）。它会循环出声，粒子跟着的是**真采样**；
+   而进度条走的是接口返回的 metadata 时长，由 `useAudioEngine` 里的虚拟时钟推进。
+2. **歌词舞台是 DOM 多层，不是 3D 文字网格。** 原版是约 290KB 的 WebGL 文字行层 + shader；
+   这里保留了 `lyricDisplayMode` / `lyricTranslationMode` / `lyricContextOpacity` 等参数的语义，
+   渲染方式不同。
+3. **3D 歌单架没有复刻。** 原版它是右键唤起的 WebGL 卡片阵列，不是 DOM；
+   控制台里 `shelf` 相关开关只会写入偏好，不会产生画面。AutoMix / cuefield 过渡规划同理未实现。
+4. **桌面模式未实现。** Electron 专属：真桌面壁纸层、Wallpaper Engine、桌面歌词独立窗口、
+   托盘、原生图标层、窗口控制。标题栏的窗口按钮因此是禁用态。
+5. **13 个视觉预设只做 3 个**，约 190 个 fx 参数只接了约 45 个。
+6. **原版没有前端路由**，`/splash`、`/search/:mode`、`/playlist/:provider/:id` 等 URL 结构是本次重构引入的。
+7. Google Fonts 在当前网络下可能不可达，字标会回落到系统衬线/无衬线字体，不影响布局。
+
+---
+
+## 数据与隐私
+
+所有登录态、搜索历史、自定义封面、自定义歌词、视觉存档、听歌画像都只写在本机
+`localStorage`（键名与原版一致，见 `src/lib/storage.ts`），不发送到任何地方。
+mock 的"登录"不校验任何真实凭据——填够 8 个字符就算成功，纯粹为了演示流程。
+
+## 许可
+
+本工程沿用上游的 GPL-3.0-only。上游 Mineradio 版权归原作者 XxHuberrr。
