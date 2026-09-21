@@ -100,13 +100,27 @@ alpha 一路穿透才不会糊黑，风险高；改用同几何二次绘制的�
 | `/search` `/search/:mode` | 搜索（`all`/`netease`/`qq`/`kugou`/`qishui`/`podcast`） |
 | `/library` | 音乐库 |
 | `/playlist/:provider/:id` | 歌单详情 |
-| `/podcast` | 播客 |
-| `/stats` | 听歌画像 |
+| `/podcast` | 播客（顶栏入口已隐藏） |
+| `/stats` | 听歌画像（顶栏入口已隐藏） |
 | **`/stage`** | **纯舞台：只有粒子与歌词** |
 | `/settings` | 设置 |
 
 `/stage` 由布局路由让位（标题栏、控制条、面板卸载），但音频引擎与 WebGL 上下文仍挂在
 `ShellLayout`，所以进出这一页**播放不会断**。控件闲置 2.5 秒淡出，Esc 回首页。
+
+顶栏只留 首页 / 搜索 / 音乐库 / 舞台 四个入口。`ShellLayout.tsx` 里的
+`SHOW_PODCAST_ENTRY`、`SHOW_STATS_ENTRY`、`SHOW_ACCOUNT_ENTRY` 三个开关都是 false：
+**隐藏而非删除**，路由、页面组件、登录弹窗代码全在，改成 true 就回来。
+画像页现在界面上没有入口（地址栏直接访问仍可）；播客还能从首页「今日电台」那排
+chip 和播放面板的「播客」页签进去。
+
+## 界面上进不去的功能
+
+| 功能 | 为什么进不去 | 怎么恢复 |
+|---|---|---|
+| 账号 / 登录弹窗 | `SHOW_ACCOUNT_ENTRY = false` 且音乐库已改成只有本地（`LIBRARY_LOCAL_ONLY = true`），两处入口一起关掉 | 把这两个常量任一个改回 `true` |
+| 听歌画像页 | 顶栏入口 `SHOW_STATS_ENTRY = false`，别处没有链接 | 改回 `true`，或地址栏访问 `#/stats` |
+| 播客页顶栏入口 | `SHOW_PODCAST_ENTRY = false`（页面本身仍可从首页电台 chip / 面板页签进入） | 改回 `true` |
 
 ---
 

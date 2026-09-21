@@ -27,18 +27,25 @@ import { useUiStore } from '@/store/uiStore';
  * 视觉舞台、控制条、面板挂在布局里，只有 <Outlet/> 换内容，音频与 WebGL 上下文不会因路由而重启。
  */
 
+/**
+ * 顶栏「播客」「画像」两个入口。按需求先隐藏而非删除：改成 true 就放回来，
+ * /podcast 与 /stats 两条路由和页面组件都没动，地址栏直接访问照样打得开。
+ */
+const SHOW_PODCAST_ENTRY: boolean = false;
+const SHOW_STATS_ENTRY: boolean = false;
+
 const NAV = [
   { to: '/home', label: '首页', short: 'HOME', Icon: IconVisual },
   { to: '/search', label: '搜索', short: 'SEARCH', Icon: IconSearch },
   { to: '/library', label: '音乐库', short: 'LIBRARY', Icon: IconLibrary },
-  { to: '/podcast', label: '播客', short: 'PODCAST', Icon: IconMic },
-  { to: '/stats', label: '画像', short: 'PROFILE', Icon: IconUser },
+  ...(SHOW_PODCAST_ENTRY ? [{ to: '/podcast', label: '播客', short: 'PODCAST', Icon: IconMic }] : []),
+  ...(SHOW_STATS_ENTRY ? [{ to: '/stats', label: '画像', short: 'PROFILE', Icon: IconUser }] : []),
   { to: '/stage', label: '舞台', short: 'STAGE', Icon: IconImmersive },
 ];
 
 /**
- * 标题栏右上角的账号入口开关。
- * 按需求先隐藏而非删除：改成 true 就恢复，登录弹窗本身仍然可以从音乐库页面进入。
+ * 标题栏右上角的账号入口开关。同样是隐藏而非删除：改成 true 就恢复。
+ * 注意登录弹窗现在只有这一处 + 音乐库页面两个入口，两边都为 false 时界面上进不去。
  */
 const SHOW_ACCOUNT_ENTRY: boolean = false;
 
