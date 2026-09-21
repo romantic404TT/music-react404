@@ -140,6 +140,19 @@ function BackgroundLayers() {
   const fx = useFxStore((s) => s.fx);
   const mode = fx.backgroundColorMode;
 
+  /* coverFile 只有一种来源：用户放进歌曲文件夹的那张图。
+     「图片」模式把原图铺开，「封面」模式只轻糊一下（能看清是什么，又不抢歌词）；
+     生成的渐变封面没有内容可辨认，两种模式下都糊成氛围光。 */
+  const photo = mode !== 'solid' ? song?.coverFile : undefined;
+  const flat = mode === 'image';
+  const veil = photo
+    ? flat
+      ? 'linear-gradient(180deg, rgba(8,9,11,.34), rgba(8,9,11,.22) 46%, rgba(8,9,11,.56))'
+      : 'linear-gradient(180deg, rgba(8,9,11,.42), rgba(8,9,11,.3) 46%, rgba(8,9,11,.62))'
+    : 'radial-gradient(ellipse at 50% 42%, rgba(8,9,11,.25), rgba(8,9,11,.94) 68%)';
+  const blur = photo ? (flat ? 0 : Math.max(0, 2.5 - fx.backgroundGlassOpacity * 2.5)) : Math.max(28, 70 - fx.backgroundGlassOpacity * 60);
+  const opacity = photo ? (flat ? 1 : 0.92) : mode === 'solid' ? 0 : 0.55;
+
   return (
     <>
       <div
@@ -155,14 +168,12 @@ function BackgroundLayers() {
         id="album-bg"
         className="absolute inset-0 z-0"
         style={{
-          opacity: mode === 'cover' ? 0.55 : 0,
+          opacity,
           transition: 'opacity var(--dur-canvas) var(--ease-mr)',
-          backgroundImage: song?.cover
-            ? `radial-gradient(ellipse at 50% 42%, rgba(8,9,11,.25), rgba(8,9,11,.94) 68%), url("${song.cover}")`
-            : 'none',
+          backgroundImage: song?.cover ? `${veil}, url("${song.cover}")` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          filter: `blur(${Math.max(28, 70 - fx.backgroundGlassOpacity * 60)}px) saturate(${(1.1 + fx.intensity * 0.35).toFixed(2)})`,
+          filter: `blur(${Math.max(0, blur).toFixed(1)}px) saturate(${(1.1 + fx.intensity * 0.35).toFixed(2)})`,
           transform: 'scale(1.12)',
         }}
       />

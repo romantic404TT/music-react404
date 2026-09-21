@@ -278,7 +278,7 @@ function MiniQueue() {
             return (
               <button key={`${t.id}-${idx}`} className="pop-item" data-active={idx === currentIdx} onClick={() => { void playAt(idx); setOpen(false); }}>
                 <span className="truncate">{t.name}</span>
-                <span className="font-mono text-[9.5px] opacity-60">{formatDuration(t.duration)}</span>
+                <span className="font-mono text-[9.5px] opacity-60">{t.duration ? formatDuration(t.duration) : '–:–'}</span>
               </button>
             );
           })}

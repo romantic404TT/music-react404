@@ -160,7 +160,10 @@ export function TrackRow({
             </svg>
           </button>
         )}
-        <span className="font-mono text-[10.5px] text-[var(--fc-muted)]">{formatDuration(track.duration)}</span>
+        <span className="font-mono text-[10.5px] text-[var(--fc-muted)]">
+          {/* 本地曲目第一次播放前时长未知，不拿 0:00 冒充 */}
+          {track.duration ? formatDuration(track.duration) : '–:–'}
+        </span>
       </span>
     </div>
   );

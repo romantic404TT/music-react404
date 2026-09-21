@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'msw';
 import { BUILT_IN_PLAYLISTS, CATALOG } from '../data/catalog';
-import { LOCAL_LYRICS, findLocalTrack } from '../data/local-tracks';
+import { findLocalTrack } from '../data/local-tracks';
 import { session } from '../session';
 import { http, HttpResponse, NET } from './util';
 
@@ -9,7 +9,8 @@ import { http, HttpResponse, NET } from './util';
  *
  * 与合成音源的根本区别：这里返回的 url 指向 public/music 下的真实文件，
  * 响应带 local:true，播放引擎据此改用元素自身的 duration/currentTime。
- * 歌词返回用户提供的 .lrc 原文，不再是模板合成。
+ * 歌词是用户提供的 .lrc 原文 —— 构建期不内联（清单是脚本生成的，内联会把
+ * 每首歌的文本打进 bundle），运行时按 URL 取一次再缓存。
  */
 
 const clamp = (v: string | null, min: number, max: number, dft: number) => {
@@ -18,6 +19,18 @@ const clamp = (v: string | null, min: number, max: number, dft: number) => {
 };
 
 const LOCAL_PLAYLIST = BUILT_IN_PLAYLISTS.find((p) => p.id === 'builtin-local')!;
+
+const lyricCache = new Map<string, string>();
+
+async function lyricText(url: string): Promise<string> {
+  const hit = lyricCache.get(url);
+  if (hit !== undefined) return hit;
+  const text = await fetch(url)
+    .then((r) => (r.ok ? r.text() : ''))
+    .catch(() => '');
+  lyricCache.set(url, text);
+  return text;
+}
 
 const localSongUrl = http.get('/api/local/song/url', async ({ request }) => {
   await NET();
@@ -52,11 +65,13 @@ const localSongUrl = http.get('/api/local/song/url', async ({ request }) => {
 const localLyric = http.get('/api/local/lyric', async ({ request }) => {
   await NET();
   const id = new URL(request.url).searchParams.get('id') ?? '';
+  const def = findLocalTrack(id);
+  const lyric = def?.lyricUrl ? await lyricText(def.lyricUrl) : '';
   return HttpResponse.json({
     provider: 'local',
-    lyric: LOCAL_LYRICS[id] ?? '',
+    lyric,
     tlyric: '',
-    source: 'local-file',
+    source: def?.lyricUrl ? 'local-file' : 'local-file-missing',
   });
 });
 

@@ -113,6 +113,11 @@ export interface Track {
   artistId?: string | number;
   album?: string;
   cover?: string;
+  /**
+   * 封面是磁盘上的真实图片文件（用户放进歌曲文件夹的），而不是按标题生成的渐变。
+   * 背景层据此决定要不要把这张图当底图铺开。
+   */
+  coverFile?: string;
   duration?: number;
   durationMs?: number;
   dt?: number;

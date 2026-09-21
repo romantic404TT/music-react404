@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
 
   listenStats: 'mineradio-listen-stats-v1',
   listenRollup: 'mineradio-listen-rollup-v2',
+  localDurations: 'mineradio-local-durations-v1',
 
   currentFxAutosave: 'mineradio-current-fx-autosave-v1',
   userFxArchives: 'mineradio-user-fx-archives-v1',

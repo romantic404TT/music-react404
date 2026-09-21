@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { FFT_SIZE, levels } from '@/lib/audioLevels';
 import { clamp } from '@/lib/format';
+import { rememberDuration } from '@/lib/localDurations';
 import { usePlayerStore, commitListenFlush, commitListenTick } from '@/store/playerStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useUiStore } from '@/store/uiStore';
@@ -51,8 +52,18 @@ export function useAudioEngine(): { audioRef: React.RefObject<HTMLAudioElement |
     };
     el.addEventListener('ended', onEnded);
 
+    /* 清单里没有时长（构建期解不了 mp3），第一次读到 metadata 时记进本地存储，
+       下次启动列表上直接就是准确值 */
+    const onMeta = () => {
+      if (!localRef.current) return;
+      const song = usePlayerStore.getState().current();
+      if (song && Number.isFinite(el.duration) && el.duration > 0) rememberDuration(song.id, el.duration);
+    };
+    el.addEventListener('loadedmetadata', onMeta);
+
     const unsubscribe = () => {
       el.removeEventListener('ended', onEnded);
+      el.removeEventListener('loadedmetadata', onMeta);
       el.pause();
       el.src = '';
       void ctxRef.current?.close().catch(() => undefined);

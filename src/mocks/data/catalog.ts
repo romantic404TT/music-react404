@@ -255,7 +255,8 @@ export const BUILT_IN_PLAYLISTS: Playlist[] = [
     provider: 'local',
     id: 'builtin-local',
     name: '本地音乐',
-    cover: makeCover('builtin-local', '本'),
+    /* 第一首歌的真实封面优先；一首图都没有才用生成的渐变 */
+    cover: LOCAL_TRACKS[0]?.cover ?? makeCover('builtin-local', '本'),
     trackCount: LOCAL_TRACKS.length,
     tag: ['本地'],
     creator: { userId: 0, nickname: '本地文件' },

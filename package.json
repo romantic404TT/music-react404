@@ -10,6 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "music:sync": "node scripts/sync-music.mjs",
     "mock:worker": "msw init public/ --save"
   },
   "dependencies": {
