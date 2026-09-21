@@ -102,6 +102,12 @@ export interface FxState {
   cam: 'off' | 'gesture';
   cameraViewMode: 'orbit' | 'free';
 
+  /* ---- 背景环境粒子层（react-particles-lite，2D canvas，在 3D 舞台之下） ---- */
+  ambientLayer: boolean;
+  ambientPreset: 'stars' | 'snow' | 'fireflies' | 'default';
+  /** 密度系数：直接换算粒子数，改它会重建引擎，所以只在松手时写 */
+  ambientDensity: number;
+
   /* ---- 桌面歌词 ---- */
   desktopLyrics: boolean;
   desktopLyricsSize: number;
@@ -202,6 +208,10 @@ export const FX_DEFAULTS: FxState = {
 
   cam: 'off',
   cameraViewMode: 'orbit',
+
+  ambientLayer: true,
+  ambientPreset: 'stars',
+  ambientDensity: 0.6,
 
   desktopLyrics: false,
   desktopLyricsSize: 1.0,

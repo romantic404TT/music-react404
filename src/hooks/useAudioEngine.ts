@@ -28,8 +28,9 @@ export function useAudioEngine(): { audioRef: React.RefObject<HTMLAudioElement |
   const freqRef = useRef<Uint8Array>(new Uint8Array(FFT_SIZE / 2));
   const timeRef = useRef<Uint8Array>(new Uint8Array(FFT_SIZE));
 
-  /** 虚拟时钟基准 */
+  /** 虚拟时钟基准（仅用于合成底床；真实文件直接用元素时钟） */
   const clockRef = useRef({ base: 0, wallAt: 0, running: false, bed: 12 });
+  const localRef = useRef(false);
   const lastTickRef = useRef(0);
   const listenAccRef = useRef(0);
   const prevEnergyRef = useRef(0);
@@ -42,7 +43,16 @@ export function useAudioEngine(): { audioRef: React.RefObject<HTMLAudioElement |
     el.crossOrigin = 'anonymous';
     audioRef.current = el;
 
+    /* 真实文件播完：记一次完播，再交给 store 按播放模式推进 */
+    const onEnded = () => {
+      if (!localRef.current) return;
+      commitListenFlush(true);
+      void usePlayerStore.getState().next(false);
+    };
+    el.addEventListener('ended', onEnded);
+
     const unsubscribe = () => {
+      el.removeEventListener('ended', onEnded);
       el.pause();
       el.src = '';
       void ctxRef.current?.close().catch(() => undefined);
@@ -94,9 +104,18 @@ export function useAudioEngine(): { audioRef: React.RefObject<HTMLAudioElement |
       if (sourceUrlRef.current === source.url) return;
       sourceUrlRef.current = source.url;
 
+      /* 真实文件不能循环，播完由 ended 事件推进下一首；
+         合成底床只有 12 秒，必须循环才能撑满整首歌的时长。 */
+      localRef.current = source.local === true;
+      el.loop = !localRef.current;
+
       el.src = source.url;
       clockRef.current.base = usePlayerStore.getState().position;
       clockRef.current.wallAt = performance.now();
+      if (localRef.current) {
+        // 真实时长要等 metadata 到位，先清掉上一首的残留
+        usePlayerStore.getState().setDuration(0);
+      }
       el.load();
     };
     apply();
@@ -174,6 +193,16 @@ export function useAudioEngine(): { audioRef: React.RefObject<HTMLAudioElement |
       const el = audioRef.current;
       if (!el) return;
       if (Math.abs(s.position - last) > 1.5) {
+        if (localRef.current) {
+          // 真实文件直接原生 seek，不做取模
+          try {
+            el.currentTime = s.position;
+          } catch {
+            /* 元数据还没就绪，忽略一次 */
+          }
+          last = s.position;
+          return;
+        }
         clockRef.current.base = s.position;
         clockRef.current.wallAt = performance.now();
         const bed = clockRef.current.bed;
@@ -199,11 +228,20 @@ export function useAudioEngine(): { audioRef: React.RefObject<HTMLAudioElement |
       const clock = clockRef.current;
       const el = audioRef.current;
 
-      if (el && el.duration && el.duration > 1 && Math.abs(clock.bed - el.duration) > 0.2) {
+      if (!localRef.current && el && el.duration && el.duration > 1 && Math.abs(clock.bed - el.duration) > 0.2) {
         clock.bed = el.duration;
       }
 
-      if (clock.running) {
+      if (localRef.current) {
+        /* 真实文件：元素自己就是权威时钟，不要用墙钟去推算 */
+        if (el && Number.isFinite(el.duration) && el.duration > 0) {
+          if (Math.abs(store.duration - el.duration) > 0.5) store.setDuration(el.duration);
+          if (now - lastUi > 240) {
+            lastUi = now;
+            store.setPosition(el.currentTime);
+          }
+        }
+      } else if (clock.running) {
         const position = clock.base + (now - clock.wallAt) / 1000;
         const dur = store.duration || store.current()?.duration || 0;
         if (dur && position >= dur) {

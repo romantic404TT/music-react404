@@ -75,6 +75,17 @@ const ACCOUNT_FIXTURES: Record<Provider, ProviderLogin> = {
     nickname: '',
     avatar: '',
   },
+  /** 本地文件不需要账号：始终视为可用，且播放票据就绪 */
+  local: {
+    provider: 'local',
+    loggedIn: true,
+    configured: true,
+    nickname: '本地音乐',
+    avatar: '',
+    playbackReady: true,
+    playbackKeyReady: true,
+    membershipKnown: true,
+  },
 };
 
 /** 登录成功后写入的账号画像（昵称/头像/VIP 档位），全部虚构 */
@@ -97,6 +108,7 @@ const DEMO_ACCOUNT: Record<Provider, Partial<ProviderLogin>> = {
     isVip: true, isSvip: false, vipLevel: 2, vipLabel: 'VIP', playbackKeyReady: true, membershipKnown: true,
   },
   spotify: { loggedIn: false },
+  local: { loggedIn: true, nickname: '本地音乐' },
 };
 
 export const session = {

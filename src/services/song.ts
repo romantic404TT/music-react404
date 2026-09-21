@@ -17,6 +17,7 @@ const URL_PATH: Record<Provider, string> = {
   kugou: '/api/kugou/song/url',
   qishui: '/api/qishui/song/url',
   spotify: '/api/spotify/song/url',
+  local: '/api/local/song/url',
 };
 
 const LYRIC_PATH: Record<Provider, string> = {
@@ -25,6 +26,7 @@ const LYRIC_PATH: Record<Provider, string> = {
   kugou: '/api/kugou/lyric',
   qishui: '/api/qishui/lyric',
   spotify: '/api/spotify/lyric',
+  local: '/api/local/lyric',
 };
 
 export interface ResolvedSource {
@@ -44,6 +46,12 @@ export interface ResolvedSource {
   br?: number;
   /** 合成底床的派生种子，mock 的 /api/audio 用它还原同一段节奏 */
   seed?: string;
+  /**
+   * 真实文件音源（用户放进 public/music 的 mp3）。
+   * 播放引擎据此分支：local 走元素自身的 duration/currentTime 与原声解码，
+   * 非 local 才用 12 秒循环底床 + 虚拟时钟。
+   */
+  local?: boolean;
 }
 
 const TRY_ORDER: Provider[] = ['netease', 'qq', 'kugou', 'qishui'];
@@ -74,7 +82,12 @@ export async function resolveSongUrl(
   quality: QualityLevel,
   signal?: AbortSignal,
 ): Promise<ResolvedSource> {
-  const order = [song.provider, ...TRY_ORDER.filter((p) => p !== song.provider)] as Provider[];
+  /* 本地文件不参与跨平台同曲回退：找不到就是文件缺失，
+     去远端搜一首同名歌顶上会播错内容。 */
+  const isLocal = song.provider === 'local' || song.type === 'local';
+  const order = isLocal
+    ? (['local'] as Provider[])
+    : ([song.provider, ...TRY_ORDER.filter((p) => p !== song.provider)] as Provider[]);
   const tried: string[] = [];
   let lastFailure: ResolvedSource | null = null;
 

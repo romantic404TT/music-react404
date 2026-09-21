@@ -16,7 +16,7 @@ import { queueItemKey } from '@/types/track';
  * 内置列表）按 id 反查；直接粘链接进来时查不到就退到歌单名与占位封面。
  */
 
-const PROVIDER_KEYS: string[] = ['netease', 'qq', 'kugou', 'qishui', 'spotify'];
+const PROVIDER_KEYS: string[] = ['netease', 'qq', 'kugou', 'qishui', 'spotify', 'local'];
 
 function asProvider(raw: string | undefined): Provider | null {
   return raw && (PROVIDER_KEYS as string[]).includes(raw) ? (raw as Provider) : null;
@@ -70,7 +70,7 @@ export function PlaylistDetailPage() {
   }, [params.provider, params.id, openPlaylist, prefetchNextPage, loadPlaylists]);
 
   const meta: Playlist | undefined = useMemo(() => {
-    const pool: Playlist[] = [...builtIn, ...allLists.netease, ...allLists.qq, ...allLists.kugou, ...allLists.qishui, ...allLists.spotify];
+    const pool: Playlist[] = [...builtIn, ...allLists.netease, ...allLists.qq, ...allLists.kugou, ...allLists.qishui, ...allLists.spotify, ...allLists.local];
     return pool.find((pl) => pl.id === id);
   }, [builtIn, allLists, id]);
 

@@ -10,6 +10,7 @@ const PLAYLIST_PATH: Record<Provider, string> = {
   kugou: '/api/kugou/user/playlists',
   qishui: '/api/qishui/user/playlists',
   spotify: '/api/spotify/user/playlists',
+  local: '/api/local/user/playlists',
 };
 
 const TRACKS_PATH: Record<Provider, string> = {
@@ -18,6 +19,7 @@ const TRACKS_PATH: Record<Provider, string> = {
   kugou: '/api/kugou/playlist/tracks',
   qishui: '/api/qishui/playlist/tracks',
   spotify: '/api/spotify/playlist/tracks',
+  local: '/api/local/playlist/tracks',
 };
 
 export interface HydratedPage {

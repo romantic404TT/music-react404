@@ -46,7 +46,7 @@ interface LibraryState {
 }
 
 const emptyLists = (): Record<Provider, Playlist[]> => ({
-  netease: [], qq: [], kugou: [], qishui: [], spotify: [],
+  netease: [], qq: [], kugou: [], qishui: [], spotify: [], local: [],
 });
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({

@@ -3,12 +3,13 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { GlassFilterDefs } from '@/components/ui/GlassFilterDefs';
 import { ToastLayer } from '@/components/ui/primitives';
 import { VisualStage } from '@/components/stage/VisualStage';
+import { AmbientParticles } from '@/components/stage/AmbientParticles';
 import { LyricsOverlay } from '@/components/stage/LyricsOverlay';
 import { BottomBar } from '@/components/player/BottomBar';
 import { PlaylistPanel } from '@/components/playlist/PlaylistPanel';
 import { FxFab, FxPanel } from '@/components/fx/FxPanel';
 import { ModalHost } from '@/components/modals/ModalHost';
-import { IconLibrary, IconMic, IconSearch, IconUser, IconVisual } from '@/components/ui/Icons';
+import { IconImmersive, IconLibrary, IconMic, IconSearch, IconUser, IconVisual } from '@/components/ui/Icons';
 import { useAudioEngine } from '@/hooks/useAudioEngine';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useAccountStore } from '@/store/accountStore';
@@ -32,6 +33,7 @@ const NAV = [
   { to: '/library', label: '音乐库', short: 'LIBRARY', Icon: IconLibrary },
   { to: '/podcast', label: '播客', short: 'PODCAST', Icon: IconMic },
   { to: '/stats', label: '画像', short: 'PROFILE', Icon: IconUser },
+  { to: '/stage', label: '舞台', short: 'STAGE', Icon: IconImmersive },
 ];
 
 /**
@@ -197,22 +199,39 @@ export function ShellLayout() {
     return () => window.removeEventListener('keydown', onKey);
   }, [toggleFx]);
 
+  /* 纯舞台页：只留粒子与歌词，标题栏/控制条/面板全部让位。
+     音频引擎和 WebGL 上下文仍挂在这里，所以进/出这一页不会打断播放。 */
+  const stageMode = location.pathname === '/stage';
+
   return (
-    <div id="desktop-window-shell" className="relative h-full w-full overflow-hidden bg-[var(--fc-bg)]">
+    <div
+      id="desktop-window-shell"
+      data-stage={stageMode || undefined}
+      className="relative h-full w-full overflow-hidden bg-[var(--fc-bg)]"
+    >
       <GlassFilterDefs />
       <BackgroundLayers />
+      <AmbientParticles />
       <VisualStage />
-      <LyricsOverlay />
-      <TitleBar />
+      {!stageMode && <LyricsOverlay />}
+      {!stageMode && <TitleBar />}
 
-      <main data-ui-layer className="absolute inset-x-0 bottom-0 top-[58px] z-20 overflow-y-auto">
+      <main
+        data-ui-layer
+        className={`absolute inset-x-0 bottom-0 z-20 overflow-y-auto ${stageMode ? 'top-0' : 'top-[58px]'}`}
+      >
         <Outlet />
       </main>
 
-      <PlaylistPanel />
-      <BottomBar />
-      <FxFab />
-      <FxPanel />
+      {/* 舞台页的歌词与控件由 StagePage 自己经 <Outlet/> 渲染，这里只让位 */}
+      {!stageMode && (
+        <>
+          <PlaylistPanel />
+          <BottomBar />
+          <FxFab />
+          <FxPanel />
+        </>
+      )}
       <ModalHost />
       <ToastLayer />
     </div>

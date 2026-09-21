@@ -4,8 +4,11 @@
  *
  * 注意 spotify：server.js:4640 已把它硬短路成 404 PROVIDER_REMOVED，
  * 但前端仍保留引用。本工程按源码现状 mock（返回 404），不做"修复"。
+ *
+ * local 不是上游的音源，是本工程加的：用户自己放进 public/music 的文件，
+ * 原版对应的是 type:'local' + localKey/localUrl 那套本地曲库概念。
  */
-export type Provider = 'netease' | 'qq' | 'kugou' | 'qishui' | 'spotify';
+export type Provider = 'netease' | 'qq' | 'kugou' | 'qishui' | 'spotify' | 'local';
 
 export type TrackType = 'song' | 'podcast' | 'local';
 
@@ -32,6 +35,7 @@ export const QUALITY_OPTIONS: Record<Provider, QualityLevel[]> = {
   kugou: ['hires', 'lossless', 'exhigh', 'standard'],
   qishui: ['standard'],
   spotify: ['standard'],
+  local: ['standard'],
 };
 
 export const QUALITY_LABEL: Record<QualityLevel, string> = {
@@ -48,6 +52,7 @@ export const QUALITY_LABEL_BY_PROVIDER: Partial<Record<Provider, Partial<Record<
   kugou: { hires: 'Hi-Res FLAC', lossless: '无损 FLAC', exhigh: '320k MP3', standard: '128k MP3' },
   qishui: { standard: '汽水匹配源' },
   spotify: { standard: 'Spotify 匹配源' },
+  local: { standard: '本地文件' },
 };
 
 export const DEFAULT_QUALITY: Record<Provider, QualityLevel> = {
@@ -56,6 +61,7 @@ export const DEFAULT_QUALITY: Record<Provider, QualityLevel> = {
   kugou: 'lossless',
   qishui: 'standard',
   spotify: 'standard',
+  local: 'standard',
 };
 
 export function qualityLabel(provider: Provider, level: QualityLevel): string {

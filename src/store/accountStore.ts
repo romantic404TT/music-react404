@@ -48,7 +48,7 @@ interface AccountState {
 }
 
 const emptyStatuses = (): Record<Provider, LoginStatus | null> => ({
-  netease: null, qq: null, kugou: null, qishui: null, spotify: null,
+  netease: null, qq: null, kugou: null, qishui: null, spotify: null, local: null,
 });
 
 let qrTimer: ReturnType<typeof setInterval> | null = null;

@@ -16,7 +16,10 @@ npm install
 npm run dev
 ```
 
-打开 http://127.0.0.1:5173/ ，先进入启动页，点击任意位置或按 Enter 进入首页。
+打开 http://127.0.0.1:5180/ ，先进入启动页，点击任意位置或按 Enter 进入首页。
+
+端口固定在 **5180** 且开了 `strictPort`：同机另一个项目占着 `0.0.0.0:5173`，
+用专属端口避免两个 dev server 抢同一端口，抢不到时会直接报错而不是静默跳号。
 
 ```bash
 npm run build      # 类型检查 + 生产构建，产物在 dist/
@@ -63,6 +66,70 @@ MSW 用动态 `import` 挂载，关掉后不会进包。注意真后端是 Elect
 | 视觉 | three | ^0.186.0 |
 | 动画 | gsap | ^3.15.0（已装，当前界面用 CSS 过渡实现） |
 | Mock | msw | ^2.7.6 |
+| 环境粒子 | react-particles-lite | ^1.0.0（ISC，零依赖） |
+
+---
+
+## 第三方视觉代码与授权
+
+| 来源 | 授权 | 用在哪 |
+|---|---|---|
+| [cnolka/Aural-Pro](https://github.com/cnolka/Aural-Pro) | MIT © 2025 cnolka | 仅借鉴技法，未复制文件：低频的 `sqrt` 响应曲线、高通的 `smoothstep` 门控、点精灵"窄核 + 宽晕"衰减形状 |
+| [react-particles-lite](https://github.com/nikatopu/react-particles-lite) | ISC | 作为 npm 依赖，驱动背景星尘层 `AmbientParticles` |
+| Ashima / Stefan Gustavson 的 simplex noise | 公开领域 | 内联在 `VisualStage.tsx` 的 GLSL（`snoise` / `fbm3`） |
+
+引入前审计过 react-particles-lite 的 `dist`：无 `fetch` / `XMLHttpRequest` / `eval` /
+`new Function` / `localStorage` / `atob` / 硬编码网络地址，且无传递依赖。
+
+**一个实现约束**：该库的 effect 依赖是 `JSON.stringify(params) + preset`，params 一变就
+销毁重建整个引擎、所有粒子重生。所以 `AmbientParticles` 的 params 是稳定值，密度滑条
+做了 0.25 一档的量化——**这一层不能用音频逐帧驱动**，音频反应全部由 three.js 那层承担。
+
+刻意**没**用 `UnrealBloomPass`：本工程背景是 DOM 层（封面模糊 + 渐变），composer 要把
+alpha 一路穿透才不会糊黑，风险高；改用同几何二次绘制的假辉光（窄核 + 宽晕加色），
+代价是一次 draw call。
+
+---
+
+## 路由
+
+| 路径 | 页面 |
+|---|---|
+| `/splash` | 启动页 |
+| `/home` | 首页仪表盘 |
+| `/search` `/search/:mode` | 搜索（`all`/`netease`/`qq`/`kugou`/`qishui`/`podcast`） |
+| `/library` | 音乐库 |
+| `/playlist/:provider/:id` | 歌单详情 |
+| `/podcast` | 播客 |
+| `/stats` | 听歌画像 |
+| **`/stage`** | **纯舞台：只有粒子与歌词** |
+| `/settings` | 设置 |
+
+`/stage` 由布局路由让位（标题栏、控制条、面板卸载），但音频引擎与 WebGL 上下文仍挂在
+`ShellLayout`，所以进出这一页**播放不会断**。控件闲置 2.5 秒淡出，Esc 回首页。
+
+---
+
+## 只剩你上传的歌
+
+`src/mocks/data/catalog.ts` 顶部的 `REMOTE_DEMO_TRACKS = false` 关掉全部合成曲目：
+
+- 五个平台搜索结果为空，「全部」页签只剩本地曲目
+- 每日推荐 / 平台推荐改指向真实曲目（否则首页「播放今日推荐」是死按钮）
+- 账号歌单清空，内置歌单只剩「本地音乐」这一张（其余四张的曲目来自空池，点开必为空）
+
+实测：搜索 `a` 的结果从 17 条降到 **1 条**。生成器代码保留，常量改回 `true` 即恢复。
+播客频道未动——你说的是"歌曲"，播客不是歌；要一起清说一声。
+
+### 音乐库只剩「本地」
+
+`src/pages/LibraryPage.tsx` 顶部的 `LIBRARY_LOCAL_ONLY = true` 撤掉左列的四个平台页签与
+登录 / 刷新卡片，这一页固定停在 `local`，右列只有「本地音乐」一张歌单卡片。
+本地音源没有账号概念，所以也不再打 `login/status`。
+
+代价要说清楚：**登录弹窗在界面上彻底没有入口了**。这一页原本是唯一还能点到的地方，
+标题栏的账号按钮早先已由 `ShellLayout.tsx` 的 `SHOW_ACCOUNT_ENTRY = false` 藏掉。
+`ModalHost` 里的扫码 / Cookie 登录逻辑一行没删，把这两个常量改回 `false` 就全部回来。
 
 ---
 
@@ -137,9 +204,37 @@ WebAudio `AnalyserNode` 实时驱动 bass / mid / treble / beatPulse。实现 3 
 
 ---
 
+## 本地音乐（真实音频）
+
+`public/music/<slug>/` 下放 `track.mp3` + `track.lrc`，再到
+`src/mocks/data/local-tracks.ts` 登记一条（import 歌词 + 填标题/艺人/时长），
+它就会以 `provider: 'local'` 进入曲库：可被搜索、进「本地音乐」歌单、
+封面粒子采样真封面色、歌词用真实时间轴。
+
+与合成音源的三条实质区别：
+
+| | 合成曲目 | 本地真实文件 |
+|---|---|---|
+| 音频 | `/api/audio` 现算的 12 秒 WAV 底床，循环 | `/music/*.mp3` 原文件，不循环 |
+| 进度 | 虚拟时钟按 metadata 时长推进 | 元素自身的 `currentTime` / `duration` |
+| 歌词 | 模板句合成 | 用户 `.lrc` 原文 |
+| 播完 | 时钟到点切歌 | `ended` 事件切歌 |
+
+`/api/local/song/url` 的响应带 `local: true`，播放引擎据此分支。
+本地曲目**不参与**跨平台同曲回退——文件缺失就是缺失，去远端搜同名歌顶上会播错内容。
+
+当前已接入：`Beauty And A Beat`（Justin Bieber，228 秒，用户提供）。
+加新歌的三步注释写在 `src/mocks/data/local-tracks.ts` 顶部。
+
+> 注意：`public/` 下的文件会被原样拷进 `dist/`，不做压缩也不加 hash。
+> 一首 3.6MB 的 mp3 就让部署包多 3.6MB。本地跑无所谓；
+> 把它 `npm run build` 后推到公开托管，等于公开分发该音频文件——这步需要你自己确认有权这么做。
+
+---
+
 ## 自测结果
 
-在 `node v24.16 / npm 11.13` + 无头 Edge 下实测（1440×900，dev server `:5173`）：
+在 `node v24.16 / npm 11.13` + 无头 Edge 下实测（1440×900，dev server `:5180`）：
 
 | 项 | 结果 |
 |---|---|
@@ -161,15 +256,30 @@ WebAudio `AnalyserNode` 实时驱动 bass / mid / treble / beatPulse。实现 3 
 | 扫码登录 | 弹窗出二维码，等待态 → 约 6 秒后自动确认并关闭（mock 状态机 801→802→803） |
 | WebGL | `#canvas-container canvas` 1440×900，软件渲染（swiftshader）下正常出点云 |
 
+### 真实音频（本地曲目）
+
+| 项 | 结果 |
+|---|---|
+| mp3 分发 | `GET /music/beauty-and-a-beat/track.mp3` → 200，3,649,199 字节，`audio/mpeg` |
+| 解码 | Edge `loadedmetadata` → duration 228.02s，readyState 4 |
+| 时长显示 | 控制条右侧显示 **3:48**（真实值，非 metadata 假定值） |
+| 进度 | 播放 4s 显示 0:02 → 10s 显示 0:08，随元素 `currentTime` 走 |
+| 拖拽 seek | 拖到 2:00 → 显示 2:02，进度条约 53% |
+| 歌词同步 | seek 到 2:02 时窗口首行为 lrc 的 `[01:49.12]I want to show you all the finer things in life`，与文件时间轴一致 |
+| 粒子 | 播放中连续两帧 canvas 字节不同（由真声驱动，非合成底床） |
+| 端点 | `/api/local/{search,song/url,lyric,user/playlists,playlist/tracks}` 全部命中 |
+| 错误 | `pageerror` 0、`console.error` 0 |
+
 规模：**64 个源文件，约 12,000 行**（TS/TSX/CSS）。
 
 ---
 
 ## 已知差异（不要按原版预期）
 
-1. **音频是合成的。** mock 没有真实音源，`/api/audio` 回一段按曲目 id 派生 BPM 的 12 秒 WAV 底床
-   （`src/mocks/audio/synth.ts`）。它会循环出声，粒子跟着的是**真采样**；
-   而进度条走的是接口返回的 metadata 时长，由 `useAudioEngine` 里的虚拟时钟推进。
+1. **合成曲目没有真实音乐。** 除 `local` 音源外，`/api/audio` 回的是按曲目 id 派生 BPM 的
+   12 秒 WAV 底床（`src/mocks/audio/synth.ts`）——有真信号喂分析器，粒子跟的是真采样，
+   但它不是那首歌，进度条走的也只是 metadata 假定值。
+   **你自己的 mp3 走 `local` 音源，是真实音频、真实时长、真实歌词**，见上面「本地音乐」一节。
 2. **歌词舞台是 DOM 多层，不是 3D 文字网格。** 原版是约 290KB 的 WebGL 文字行层 + shader；
    这里保留了 `lyricDisplayMode` / `lyricTranslationMode` / `lyricContextOpacity` 等参数的语义，
    渲染方式不同。

@@ -17,6 +17,7 @@ const LibraryPage = lazy(() => import('@/pages/LibraryPage').then((m) => ({ defa
 const PlaylistDetailPage = lazy(() => import('@/pages/PlaylistDetailPage').then((m) => ({ default: m.PlaylistDetailPage })));
 const PodcastPage = lazy(() => import('@/pages/PodcastPage').then((m) => ({ default: m.PodcastPage })));
 const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })));
+const StagePage = lazy(() => import('@/pages/StagePage').then((m) => ({ default: m.StagePage })));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 
 function RouteFallback() {
@@ -46,6 +47,7 @@ export function AppRoutes(): ReactNode {
           <Route path="/playlist/:provider/:id" element={<PlaylistDetailPage />} />
           <Route path="/podcast" element={<PodcastPage />} />
           <Route path="/stats" element={<StatsPage />} />
+          <Route path="/stage" element={<StagePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Route>

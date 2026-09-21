@@ -17,6 +17,7 @@ const PATH: Record<Provider, string> = {
   kugou: '/api/kugou/search',
   qishui: '/api/qishui/search',
   spotify: '/api/spotify/search',
+  local: '/api/local/search',
 };
 
 export interface SearchPage {
@@ -33,11 +34,14 @@ export async function search(
   signal?: AbortSignal,
 ): Promise<SearchPage> {
   if (mode === 'all') {
+    /* 四个远端音源 + 本地曲目各取一页再交错合并；本地不是"平台"，
+       但它对用户来说就是能搜到的东西，所以并进全部。 */
     const providers: Provider[] = ['netease', 'qq', 'kugou', 'qishui'];
-    const per = Math.max(4, Math.ceil(limit / providers.length));
-    const results = await Promise.all(
-      providers.map((p) => apiGet<SearchResponse>(PATH[p], { keywords, limit: per, offset }, signal).catch(() => null)),
-    );
+    const per = Math.max(4, Math.ceil(limit / (providers.length + 1)));
+    const results = await Promise.all([
+      ...providers.map((p) => apiGet<SearchResponse>(PATH[p], { keywords, limit: per, offset }, signal).catch(() => null)),
+      apiGet<SearchResponse>(PATH.local, { keywords, limit: per, offset }, signal).catch(() => null),
+    ]);
     const buckets = results.map((r) => r?.songs ?? []);
     /* 交错合并，避免同一平台连排 20 条 */
     const merged: Track[] = [];

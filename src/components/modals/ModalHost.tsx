@@ -39,6 +39,7 @@ const PROVIDER_LABEL: Record<Provider, string> = {
   kugou: '酷狗音乐',
   qishui: '汽水音乐',
   spotify: 'Spotify',
+  local: '本地音乐',
 };
 
 const LOGIN_METHODS: { value: LoginMethod; label: string }[] = [

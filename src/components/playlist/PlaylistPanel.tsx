@@ -159,7 +159,7 @@ function PlaylistPane({ onPicked }: { onPicked: () => void }) {
           <span className="min-w-0">
             <span className="block truncate text-[12.5px] text-[var(--fc-ink)]">{pl.name}</span>
             <span className="block truncate font-mono text-[10px] text-[var(--fc-muted)]">
-              {pl.trackCount ?? 0} 首 · {formatPlayCount(pl.playCount)} 次播放
+              {pl.trackCount ?? 0} 首{pl.playCount !== undefined ? ` · ${formatPlayCount(pl.playCount)} 次播放` : ''}
             </span>
           </span>
         </button>

@@ -1,3 +1,7 @@
+import { makeCover, mulberry32 } from './cover';
+
+import { LOCAL_TRACKS } from './local-tracks';
+
 import type { Playlist, PodcastChannel, Provider, Track } from '@/types/track';
 
 /**
@@ -9,16 +13,6 @@ import type { Playlist, PodcastChannel, Provider, Track } from '@/types/track';
  * 则严格照 server.js 的 mapSongRecord / mapQQTrack / mapKugouSearchItem 产出，
  * 这样音源回退、队列去重这类逻辑才有真实的输入可以跑。
  */
-
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 const pick = <T,>(rnd: () => number, arr: readonly T[]): T => arr[Math.floor(rnd() * arr.length)]!;
 const int = (rnd: () => number, min: number, max: number) => min + Math.floor(rnd() * (max - min + 1));
@@ -43,37 +37,6 @@ const ALBUMS = [
   '雪线以上', '无人电台', 'Concrete Bloom', '旧地图',
 ];
 const TAGS = ['流行', '电子', '摇滚', '民谣', '嘻哈', '古典', '爵士', 'R&B', '氛围', '后摇'];
-
-/** 确定性封面：渐变 + 同心环 + 首字母，避免任何外部图片依赖 */
-export function makeCover(seedText: string, label: string): string {
-  let h = 2166136261;
-  for (let i = 0; i < seedText.length; i++) {
-    h ^= seedText.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  const rnd = mulberry32(h);
-  const hue = int(rnd, 0, 359);
-  const hue2 = (hue + int(rnd, 40, 300)) % 360;
-  const c1 = `hsl(${hue} 62% 22%)`;
-  const c2 = `hsl(${hue2} 70% 8%)`;
-  const c3 = `hsl(${hue2} 88% 62%)`;
-  const letter = (label || '?').replace(/^[\s'"(【《]+/, '').charAt(0) || '♪';
-  const rings = Array.from({ length: 3 }, (_, i) => {
-    const r = 26 + i * 17 + int(rnd, -3, 3);
-    return `<circle cx="150" cy="150" r="${r}" fill="none" stroke="${c3}" stroke-opacity="${0.1 - i * 0.024}" stroke-width="${2 - i * 0.4}"/>`;
-  }).join('');
-
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">` +
-    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
-    `<stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>` +
-    `<rect width="300" height="300" fill="url(#g)"/>${rings}` +
-    `<circle cx="150" cy="150" r="7" fill="${c3}" fill-opacity=".5"/>` +
-    `<text x="150" y="182" text-anchor="middle" font-family="sans-serif" font-size="112" ` +
-    `font-weight="700" fill="${c3}" fill-opacity=".26">${letter}</text></svg>`;
-
-  return 'data:image/svg+xml,' + encodeURIComponent(svg);
-}
 
 function baseTrack(rnd: () => number, provider: Provider, index: number): Track {
   const name = pick(rnd, TITLE_A) + pick(rnd, TITLE_B);
@@ -155,16 +118,30 @@ function baseTrack(rnd: () => number, provider: Provider, index: number): Track 
 
 export const PROVIDERS: Provider[] = ['netease', 'qq', 'kugou', 'qishui'];
 
-/** 每平台 24 首，共 96 首；下标稳定，便于分页断言 */
+/**
+ * 远端合成曲库开关。
+ *
+ * 按需求置 false：五个平台的搜索结果、每日推荐、平台推荐、账号歌单全部为空，
+ * 唯一能播的就是用户放进 public/music 并登记在 local-tracks.ts 里的真实曲目。
+ * 生成器代码保留（baseTrack / makeCover 等），改成 true 即可恢复演示数据。
+ */
+export const REMOTE_DEMO_TRACKS = false;
+
+const demoPool = (provider: Provider, seed: number, count: number): Track[] =>
+  REMOTE_DEMO_TRACKS ? Array.from({ length: count }, (_, i) => baseTrack(mulberry32(seed + i), provider, i)) : [];
+
+/** 远端音源在开关关闭时为空数组；local 始终是真实文件 */
 export const CATALOG: Record<Provider, Track[]> = {
-  netease: Array.from({ length: 24 }, (_, i) => baseTrack(mulberry32(1000 + i), 'netease', i)),
-  qq: Array.from({ length: 24 }, (_, i) => baseTrack(mulberry32(2000 + i), 'qq', i)),
-  kugou: Array.from({ length: 24 }, (_, i) => baseTrack(mulberry32(3000 + i), 'kugou', i)),
-  qishui: Array.from({ length: 24 }, (_, i) => baseTrack(mulberry32(4000 + i), 'qishui', i)),
-  spotify: Array.from({ length: 8 }, (_, i) => baseTrack(mulberry32(5000 + i), 'spotify', i)),
+  netease: demoPool('netease', 1000, 24),
+  qq: demoPool('qq', 2000, 24),
+  kugou: demoPool('kugou', 3000, 24),
+  qishui: demoPool('qishui', 4000, 24),
+  spotify: demoPool('spotify', 5000, 8),
+  local: LOCAL_TRACKS,
 };
 
-export const ALL_TRACKS: Track[] = PROVIDERS.flatMap((p) => CATALOG[p]);
+/** PROVIDERS 只列远端音源（"全部"页签会并发打它们）；local 不在其中，靠下面的全集被搜到 */
+export const ALL_TRACKS: Track[] = [...PROVIDERS.flatMap((p) => CATALOG[p]), ...CATALOG.local];
 
 export function findTrack(id: string): Track | undefined {
   return ALL_TRACKS.find((t) => t.id === id || t.providerSongId === id || t.fileHash === id || t.mid === id);
@@ -216,7 +193,7 @@ const PLAYLIST_NAMES = [
   '凌晨四点的合成器', '折光', '长时间工作', '后雨', '雪线以上', '无人电台',
 ];
 
-export const USER_PLAYLISTS: Playlist[] = PLAYLIST_NAMES.map((name, i) => {
+const DEMO_USER_PLAYLISTS: Playlist[] = PLAYLIST_NAMES.map((name, i) => {
   const rnd = mulberry32(7000 + i);
   const provider = PROVIDERS[i % PROVIDERS.length]!;
   return {
@@ -235,11 +212,22 @@ export const USER_PLAYLISTS: Playlist[] = PLAYLIST_NAMES.map((name, i) => {
   };
 });
 
+/** 关掉合成曲库时，账号歌单也是空的（未登录本来只给内置歌单） */
+export const USER_PLAYLISTS: Playlist[] = REMOTE_DEMO_TRACKS ? DEMO_USER_PLAYLISTS : [];
+
 /** 歌单曲目：从对应平台曲库按稳定顺序取，长度用 trackCount 声明值 */
 export function playlistTracks(playlistId: string, limit: number, offset: number): Track[] {
+  /* 本地歌单直接返回原对象：id 必须保持 `local-<slug>`，
+     否则 /api/local/song/url 与 /api/local/lyric 反查不到音频和歌词文件。 */
+  if (playlistId === 'builtin-local') {
+    return CATALOG.local.slice(offset, offset + limit);
+  }
+
   const pl = USER_PLAYLISTS.find((p) => p.id === playlistId);
   const provider = pl?.provider ?? 'netease';
   const pool = CATALOG[provider] ?? CATALOG.netease!;
+  /* 池子为空（合成曲库已关）时不能取模，否则 shift 变 NaN */
+  if (!pool.length) return [];
   const shift = Math.abs(playlistId.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % pool.length;
   const looped = [...pool.slice(shift), ...pool.slice(0, shift), ...pool];
   return looped.slice(offset, offset + limit).map((t, i) => ({
@@ -249,12 +237,30 @@ export function playlistTracks(playlistId: string, limit: number, offset: number
   }));
 }
 
-/** 内置歌单（原版 builtInPlaylists）：不依赖登录态，未登录也能播 */
-export const BUILT_IN_PLAYLISTS: Playlist[] = [
+/**
+ * 远端内置歌单。曲目全部来自 netease 池，池子为空时它们是「点开必为空」的死歌单，
+ * 所以跟着 REMOTE_DEMO_TRACKS 一起收放，不再单独列在外面。
+ */
+const REMOTE_BUILT_IN_PLAYLISTS: Playlist[] = [
   { provider: 'netease', id: 'builtin-daily', name: '每日推荐', cover: makeCover('builtin-daily', '每'), trackCount: 30, tag: ['推荐'] },
   { provider: 'netease', id: 'builtin-private', name: '私人雷达', cover: makeCover('builtin-private', '私'), trackCount: 20, tag: ['推荐'] },
   { provider: 'netease', id: 'builtin-history', name: '历史播放', cover: makeCover('builtin-history', '历'), trackCount: 50, tag: ['我的'] },
   { provider: 'netease', id: 'builtin-new', name: '平台新鲜事', cover: makeCover('builtin-new', '新'), trackCount: 40, tag: ['平台'] },
+];
+
+/** 内置歌单（原版 builtInPlaylists）：不依赖登录态，未登录也能播 */
+export const BUILT_IN_PLAYLISTS: Playlist[] = [
+  ...(REMOTE_DEMO_TRACKS ? REMOTE_BUILT_IN_PLAYLISTS : []),
+  {
+    provider: 'local',
+    id: 'builtin-local',
+    name: '本地音乐',
+    cover: makeCover('builtin-local', '本'),
+    trackCount: LOCAL_TRACKS.length,
+    tag: ['本地'],
+    creator: { userId: 0, nickname: '本地文件' },
+    description: 'public/music 下由用户提供的真实音频与歌词，不依赖登录。',
+  },
 ];
 
 /* ===================== 播客 ===================== */
@@ -316,10 +322,14 @@ export function podcastTrack(channelId: string, index: number): Track {
 
 /* ===================== 每日推荐 / 平台推荐 ===================== */
 
-export const DAILY_SONGS: Track[] = Array.from({ length: 30 }, (_, i) => {
-  const t = CATALOG.netease![i % CATALOG.netease!.length]!;
-  return { ...t, id: `daily-${t.id}`, recommendationSource: 'daily' };
-});
+/**
+ * 每日推荐直接给真实曲目：合成曲库关掉后，首页这张卡如果还去 netease 池里取
+ * 就永远是空的，「播放今日推荐」会变成死按钮。
+ */
+export const DAILY_SONGS: Track[] = CATALOG.local.map((t) => ({
+  ...t,
+  recommendationSource: 'daily',
+}));
 
 /** 平台推荐（原版「平台推荐」弹窗，数据来自 /api/kugou/recommendations 与 /api/qishui/feed） */
 export function platformRecommendations(provider: Provider, limit: number): Track[] {

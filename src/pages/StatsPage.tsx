@@ -19,6 +19,7 @@ const SOURCE_COLOR: Record<Provider, string> = {
   kugou: 'var(--source-qq)',
   qishui: 'var(--source-qishui)',
   spotify: 'var(--source-spotify)',
+  local: 'var(--source-local)',
 };
 
 export function StatsPage() {
